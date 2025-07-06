@@ -1,0 +1,184 @@
+﻿@page "/"
+@using NadsTech.Models
+@using NadsTech.Data
+@using Microsoft.EntityFrameworkCore
+@inject ApplicationDbContext DbContext
+@inject NavigationManager Navigation
+
+<PageTitle>NadsTech - Blog Tech & IA</PageTitle>
+
+<div class="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800">
+    <!-- Hero Section -->
+    <div class="relative overflow-hidden">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+            <div class="text-center">
+                <h1 class="text-4xl md:text-6xl font-bold text-gray-900 dark:text-white mb-6">
+                    <span class="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                        NadsTech
+                    </span>
+                </h1>
+                <p class="text-xl md:text-2xl text-gray-600 dark:text-gray-300 mb-8 max-w-3xl mx-auto">
+                    Découvrez l'actualité tech analysée par l'IA. Insights, tendances et analyses approfondies.
+                </p>
+                <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                    <button @onclick="@(() => Navigation.NavigateTo("/articles"))" 
+                            class="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors">
+                        Explorer les articles
+                    </button>
+                    <button @onclick="@(() => Navigation.NavigateTo("/about"))" 
+                            class="px-8 py-3 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-semibold rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                        À propos
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Featured Articles -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-8 text-center">
+            Articles en vedette
+        </h2>
+        
+        @if (featuredArticles?.Any() == true)
+        {
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                @foreach (var article in featuredArticles)
+                {
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg hover:shadow-xl transition-shadow overflow-hidden">
+                        @if (!string.IsNullOrEmpty(article.ImageUrl))
+                        {
+                            <img src="@article.ImageUrl" alt="@article.Title" class="w-full h-48 object-cover" />
+                        }
+                        <div class="p-6">
+                            <div class="flex items-center gap-2 mb-3">
+                                @if (!string.IsNullOrEmpty(article.Category))
+                                {
+                                    <span class="px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-sm font-medium rounded-full">
+                                        @article.Category
+                                    </span>
+                                }
+                                <span class="text-sm text-gray-500 dark:text-gray-400">
+                                    @article.CreatedAt.ToString("dd MMM yyyy")
+                                </span>
+                            </div>
+                            <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-3 line-clamp-2">
+                                @article.Title
+                            </h3>
+                            @if (!string.IsNullOrEmpty(article.Summary))
+                            {
+                                <p class="text-gray-600 dark:text-gray-300 mb-4 line-clamp-3">
+                                    @article.Summary
+                                </p>
+                            }
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+                                    <span class="flex items-center gap-1">
+                                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                            <path d="M10 12a2 2 0 100-4 2 2 0 000 4z"/>
+                                            <path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd"/>
+                                        </svg>
+                                        @article.ViewCount
+                                    </span>
+                                    <span class="flex items-center gap-1">
+                                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd"/>
+                                        </svg>
+                                        @article.LikeCount
+                                    </span>
+                                </div>
+                                <button @onclick="@(() => Navigation.NavigateTo($"/article/{article.Id}"))" 
+                                        class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium">
+                                    Lire plus →
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="text-center py-12">
+                <div class="text-gray-400 dark:text-gray-600 mb-4">
+                    <svg class="w-16 h-16 mx-auto" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd"/>
+                    </svg>
+                </div>
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">Aucun article pour le moment</h3>
+                <p class="text-gray-500 dark:text-gray-400">Les premiers articles arrivent bientôt !</p>
+            </div>
+        }
+    </div>
+
+    <!-- AI Features Section -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-8 text-center">
+            Fonctionnalités IA
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div class="text-center p-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg">
+                <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-6 h-6 text-blue-600 dark:text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"/>
+                    </svg>
+                </div>
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Analyse de contenu</h3>
+                <p class="text-gray-600 dark:text-gray-300">Insights IA sur chaque article</p>
+            </div>
+            
+            <div class="text-center p-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg">
+                <div class="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-6 h-6 text-green-600 dark:text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M2 10a8 8 0 018-8v8h8a8 8 0 11-16 0z"/>
+                        <path d="M12 2.252A8.014 8.014 0 0117.748 8H12V2.252z"/>
+                    </svg>
+                </div>
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Statistiques</h3>
+                <p class="text-gray-600 dark:text-gray-300">Graphiques et analyses de données</p>
+            </div>
+            
+            <div class="text-center p-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg">
+                <div class="w-12 h-12 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-6 h-6 text-purple-600 dark:text-purple-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                </div>
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Timing optimal</h3>
+                <p class="text-gray-600 dark:text-gray-300">Meilleur moment pour publier</p>
+            </div>
+            
+            <div class="text-center p-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg">
+                <div class="w-12 h-12 bg-orange-100 dark:bg-orange-900 rounded-lg flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-6 h-6 text-orange-600 dark:text-orange-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z"/>
+                    </svg>
+                </div>
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Articles similaires</h3>
+                <p class="text-gray-600 dark:text-gray-300">Suggestions personnalisées</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<Article>? featuredArticles;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Récupérer les articles publiés les plus récents
+            featuredArticles = await DbContext.Articles
+                .Where(a => a.IsPublished)
+                .OrderByDescending(a => a.PublishedAt ?? a.CreatedAt)
+                .Take(6)
+                .ToListAsync();
+        }
+        catch
+        {
+            // En cas d'erreur (base de données pas encore créée), on affiche une liste vide
+            featuredArticles = new List<Article>();
+        }
+    }
+}

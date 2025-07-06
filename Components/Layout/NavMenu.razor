@@ -1,0 +1,39 @@
+﻿<div class="bg-blue-600 text-white p-4">
+    <div class="flex items-center">
+        <a class="text-xl font-bold text-white hover:text-blue-200 transition-colors" href="">NadsTech</a>
+    </div>
+</div>
+
+<input type="checkbox" title="Navigation menu" class="hidden" id="nav-toggle" />
+
+<div class="p-4" onclick="document.querySelector('#nav-toggle').click()">
+    <nav class="space-y-2">
+        <div class="px-3 py-2">
+            <NavLink class="flex items-center px-3 py-2 text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" href="" Match="NavLinkMatch.All">
+                <svg class="w-5 h-5 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/>
+                </svg>
+                Home
+            </NavLink>
+        </div>
+
+        <div class="px-3 py-2">
+            <NavLink class="flex items-center px-3 py-2 text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" href="counter">
+                <svg class="w-5 h-5 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
+                </svg>
+                Counter
+            </NavLink>
+        </div>
+
+        <div class="px-3 py-2">
+            <NavLink class="flex items-center px-3 py-2 text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" href="weather">
+                <svg class="w-5 h-5 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"/>
+                </svg>
+                Weather
+            </NavLink>
+        </div>
+    </nav>
+</div>
+
