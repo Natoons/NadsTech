@@ -198,6 +198,22 @@ rcf/
 
 # Windows Store app package directories and files
 AppPackages/
+
+# User secrets for development
+appsettings.Development.json
+appsettings.Production.json
+appsettings.Staging.json
+
+# Environment variables
+.env
+.env.local
+.env.development
+.env.production
+
+# Database files
+*.db
+*.db-shm
+*.db-wal
 BundleArtifacts/
 Package.StoreAssociation.xml
 _pkginfo.txt

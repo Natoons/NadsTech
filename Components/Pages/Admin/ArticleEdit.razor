@@ -1,0 +1,200 @@
+@page "/admin/articles/new"
+@page "/admin/articles/edit/{ArticleId:int}"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
+@using NadsTech.Data
+@using NadsTech.Models
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.JSInterop
+@inject ApplicationDbContext DbContext
+@inject NavigationManager Navigation
+@inject IWebHostEnvironment Env
+@inject IJSRuntime JS
+
+<PageTitle>@(IsEditMode ? "Modifier l'article" : "Nouvel article")</PageTitle>
+
+<div class="max-w-3xl mx-auto py-8">
+    <h1 class="text-2xl font-bold mb-6 text-gray-900 dark:text-white">@(IsEditMode ? "Modifier l'article" : "Nouvel article")</h1>
+    <EditForm Model="articleModel" OnValidSubmit="HandleValidSubmit">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+        <div class="space-y-6">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Titre</label>
+                <InputText class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:bg-gray-700 dark:text-white" @bind-Value="articleModel.Title" />
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Résumé</label>
+                <InputTextArea class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:bg-gray-700 dark:text-white" @bind-Value="articleModel.Summary" />
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Catégorie</label>
+                    <InputText class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:bg-gray-700 dark:text-white" @bind-Value="articleModel.Category" />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Tags (séparés par des virgules)</label>
+                    <InputText class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:bg-gray-700 dark:text-white" @bind-Value="tagsString" />
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Image principale</label>
+                @if (!string.IsNullOrEmpty(articleModel.ImageUrl))
+                {
+                    <img src="@articleModel.ImageUrl" alt="Image" class="w-full h-48 object-cover rounded mb-2" />
+                }
+                <InputFile OnChange="HandleImageUpload" />
+                @if (!string.IsNullOrEmpty(uploadError))
+                {
+                    <div class="text-red-600 text-sm mt-1">@uploadError</div>
+                }
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Contenu</label>
+                <textarea id="editor" class="hidden" @bind="articleModel.Content"></textarea>
+                <div id="editor-container"></div>
+                @if (!string.IsNullOrEmpty(contentError))
+                {
+                    <div class="text-red-600 text-sm mt-1">@contentError</div>
+                }
+            </div>
+            <div class="flex items-center space-x-4">
+                <label class="flex items-center">
+                    <input type="checkbox" class="form-checkbox h-5 w-5 text-blue-600" @bind="articleModel.IsPublished" />
+                    <span class="ml-2 text-gray-700 dark:text-gray-300">Publié</span>
+                </label>
+                <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                    @(IsEditMode ? "Enregistrer les modifications" : "Créer l'article")
+                </button>
+                <button type="button" class="px-6 py-2 bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-400 dark:hover:bg-gray-600 transition-colors" @onclick="GoBack">
+                    Annuler
+                </button>
+            </div>
+        </div>
+    </EditForm>
+</div>
+
+@code {
+    [Parameter] public int? ArticleId { get; set; }
+    private Article articleModel = new();
+    private string tagsString = "";
+    private string uploadError = "";
+    private string contentError = "";
+    private bool IsEditMode => ArticleId.HasValue;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (IsEditMode)
+        {
+            var article = await DbContext.Articles.FirstOrDefaultAsync(a => a.Id == ArticleId);
+            if (article != null)
+            {
+                articleModel = article;
+                tagsString = string.Join(", ", article.Tags);
+            }
+            else
+            {
+                Navigation.NavigateTo("/admin/articles");
+            }
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JS.InvokeVoidAsync("eval", @"
+                if (!window.tinymceLoaded) {
+                  var script = document.createElement('script');
+                  script.src = 'https://cdn.tiny.cloud/1/no-api-key/tinymce/6/tinymce.min.js';
+                  script.referrerPolicy = 'origin';
+                  script.onload = function() {
+                    window.tinymceLoaded = true;
+                    tinymce.init({
+                      selector: '#editor',
+                      height: 400,
+                      menubar: false,
+                      plugins: 'link image code lists table',
+                      toolbar: 'undo redo | formatselect | bold italic underline | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | link image | code',
+                      setup: function (editor) {
+                        editor.on('Change KeyUp', function () {
+                          window.DotNet.invokeMethodAsync('NadsTech', 'UpdateEditorContent', editor.getContent());
+                        });
+                      }
+                    });
+                  };
+                  document.head.appendChild(script);
+                } else {
+                  tinymce.init({
+                    selector: '#editor',
+                    height: 400,
+                    menubar: false,
+                    plugins: 'link image code lists table',
+                    toolbar: 'undo redo | formatselect | bold italic underline | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | link image | code',
+                    setup: function (editor) {
+                      editor.on('Change KeyUp', function () {
+                        window.DotNet.invokeMethodAsync('NadsTech', 'UpdateEditorContent', editor.getContent());
+                      });
+                    }
+                  });
+                }
+            ");
+        }
+    }
+
+    [JSInvokable("UpdateEditorContent")]
+    public static void UpdateEditorContent(string content)
+    {
+        // Cette méthode sera utilisée pour synchroniser le contenu TinyMCE
+        // avec le modèle côté C# si besoin (à compléter si besoin)
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        uploadError = "";
+        contentError = "";
+        articleModel.Tags = tagsString.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+        if (string.IsNullOrWhiteSpace(articleModel.Content))
+        {
+            contentError = "Le contenu de l'article est requis.";
+            return;
+        }
+        if (IsEditMode)
+        {
+            DbContext.Articles.Update(articleModel);
+        }
+        else
+        {
+            articleModel.CreatedAt = DateTime.Now;
+            DbContext.Articles.Add(articleModel);
+        }
+        await DbContext.SaveChangesAsync();
+        Navigation.NavigateTo("/admin/articles");
+    }
+
+    private async Task HandleImageUpload(InputFileChangeEventArgs e)
+    {
+        uploadError = "";
+        var file = e.File;
+        if (file == null) return;
+        if (!file.ContentType.StartsWith("image/"))
+        {
+            uploadError = "Le fichier doit être une image.";
+            return;
+        }
+        var uploads = Path.Combine(Env.WebRootPath, "uploads");
+        if (!Directory.Exists(uploads)) Directory.CreateDirectory(uploads);
+        var fileName = $"article_{Guid.NewGuid()}{Path.GetExtension(file.Name)}";
+        var filePath = Path.Combine(uploads, fileName);
+        using (var stream = File.Create(filePath))
+        {
+            await file.OpenReadStream(5 * 1024 * 1024).CopyToAsync(stream);
+        }
+        articleModel.ImageUrl = $"/uploads/{fileName}";
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/admin/articles");
+    }
+} 

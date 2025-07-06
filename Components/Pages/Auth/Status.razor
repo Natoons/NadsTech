@@ -1,0 +1,118 @@
+@page "/auth-status"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.Components.Authorization
+@using NadsTech.Models
+@using static Microsoft.AspNetCore.Components.Web.RenderMode
+@inject SignInManager<ApplicationUser> SignInManager
+@inject UserManager<ApplicationUser> UserManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<PageTitle>État de connexion - NadsTech</PageTitle>
+
+<div class="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-md w-full space-y-8">
+        <div>
+            <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
+                État de connexion
+            </h2>
+        </div>
+        
+        <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+            @if (isAuthenticated)
+            {
+                <div class="space-y-4">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                                <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="ml-3">
+                            <h3 class="text-lg font-medium text-gray-900 dark:text-white">Connecté</h3>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">Vous êtes actuellement connecté</p>
+                        </div>
+                    </div>
+                    
+                    <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
+                        <dl class="space-y-2">
+                            <div>
+                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Nom</dt>
+                                <dd class="text-sm text-gray-900 dark:text-white">@(currentUser?.FirstName) @(currentUser?.LastName)</dd>
+                            </div>
+                            <div>
+                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Email</dt>
+                                <dd class="text-sm text-gray-900 dark:text-white">@currentUser?.Email</dd>
+                            </div>
+                            <div>
+                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Rôles</dt>
+                                <dd class="text-sm text-gray-900 dark:text-white">@string.Join(", ", userRoles)</dd>
+                            </div>
+                        </dl>
+                    </div>
+                    
+                    <div class="flex space-x-3">
+                        <a href="/" class="flex-1 bg-blue-600 text-white px-4 py-2 rounded-md text-center hover:bg-blue-700 transition-colors">
+                            Accueil
+                        </a>
+                        <a href="/Auth/Logout" class="flex-1 bg-red-600 text-white px-4 py-2 rounded-md text-center hover:bg-red-700 transition-colors">
+                            Se déconnecter
+                        </a>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="space-y-4">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <div class="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center">
+                                <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="ml-3">
+                            <h3 class="text-lg font-medium text-gray-900 dark:text-white">Non connecté</h3>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">Vous n'êtes pas connecté</p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex space-x-3">
+                        <a href="/Auth/Login" class="flex-1 bg-blue-600 text-white px-4 py-2 rounded-md text-center hover:bg-blue-700 transition-colors">
+                            Se connecter
+                        </a>
+                        <a href="/" class="flex-1 bg-gray-600 text-white px-4 py-2 rounded-md text-center hover:bg-gray-700 transition-colors">
+                            Accueil
+                        </a>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private bool isAuthenticated = false;
+    private ApplicationUser? currentUser;
+    private List<string> userRoles = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        
+        isAuthenticated = user.Identity?.IsAuthenticated == true;
+        
+        if (isAuthenticated)
+        {
+            currentUser = await UserManager.GetUserAsync(user);
+            if (currentUser != null)
+            {
+                userRoles = (await UserManager.GetRolesAsync(currentUser)).ToList();
+            }
+        }
+    }
+} 

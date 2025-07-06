@@ -1,0 +1,207 @@
+@page "/admin"
+@using NadsTech.Data
+@using NadsTech.Models
+@using NadsTech.Services
+@using Microsoft.EntityFrameworkCore
+@inject ApplicationDbContext DbContext
+@inject IDataSeedService DataSeedService
+@layout AdminLayout
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
+
+<PageTitle>Tableau de bord - Administration</PageTitle>
+
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Tableau de bord</h1>
+            <p class="text-gray-600 dark:text-gray-400">Vue d'ensemble de votre blog</p>
+        </div>
+        
+        <button @onclick="SeedData" 
+                class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+            Générer des données de test
+        </button>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="p-3 rounded-full bg-blue-100 dark:bg-blue-900">
+                    <svg class="w-6 h-6 text-blue-600 dark:text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"/>
+                    </svg>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Articles</p>
+                    <p class="text-2xl font-bold text-gray-900 dark:text-white">@totalArticles</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="p-3 rounded-full bg-green-100 dark:bg-green-900">
+                    <svg class="w-6 h-6 text-green-600 dark:text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                    </svg>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Articles Publiés</p>
+                    <p class="text-2xl font-bold text-gray-900 dark:text-white">@publishedArticles</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="p-3 rounded-full bg-yellow-100 dark:bg-yellow-900">
+                    <svg class="w-6 h-6 text-yellow-600 dark:text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clip-rule="evenodd"/>
+                    </svg>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Commentaires</p>
+                    <p class="text-2xl font-bold text-gray-900 dark:text-white">@totalComments</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="p-3 rounded-full bg-purple-100 dark:bg-purple-900">
+                    <svg class="w-6 h-6 text-purple-600 dark:text-purple-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Vues</p>
+                    <p class="text-2xl font-bold text-gray-900 dark:text-white">@totalViews</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Articles -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+            <h3 class="text-lg font-medium text-gray-900 dark:text-white">Articles récents</h3>
+        </div>
+        <div class="p-6">
+            @if (recentArticles?.Any() == true)
+            {
+                <div class="space-y-4">
+                    @foreach (var article in recentArticles)
+                    {
+                        <div class="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+                            <div class="flex-1">
+                                <h4 class="font-medium text-gray-900 dark:text-white">@article.Title</h4>
+                                <p class="text-sm text-gray-600 dark:text-gray-400">
+                                    @article.CreatedAt.ToString("dd MMM yyyy") - @article.ViewCount vues
+                                </p>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <span class="px-2 py-1 text-xs font-medium rounded-full @(article.IsPublished ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200")">
+                                    @(article.IsPublished ? "Publié" : "Brouillon")
+                                </span>
+                                <button @onclick="@(() => Navigation.NavigateTo($"/admin/articles/edit/{article.Id}"))" 
+                                        class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300">
+                                    Modifier
+                                </button>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="text-center py-8">
+                    <p class="text-gray-500 dark:text-gray-400">Aucun article pour le moment</p>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+            <h3 class="text-lg font-medium text-gray-900 dark:text-white">Actions rapides</h3>
+        </div>
+        <div class="p-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <button @onclick="@(() => Navigation.NavigateTo("/admin/articles/new"))" 
+                        class="flex items-center justify-center px-4 py-3 border-2 border-blue-600 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900 transition-colors">
+                    <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/>
+                    </svg>
+                    Nouvel article
+                </button>
+                
+                <button @onclick="@(() => Navigation.NavigateTo("/admin/comments"))" 
+                        class="flex items-center justify-center px-4 py-3 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                    <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clip-rule="evenodd"/>
+                    </svg>
+                    Gérer les commentaires
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<Article>? recentArticles;
+    private int totalArticles;
+    private int publishedArticles;
+    private int totalComments;
+    private int totalViews;
+
+    [Inject]
+    public NavigationManager Navigation { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadStats();
+    }
+
+    private async Task LoadStats()
+    {
+        try
+        {
+            totalArticles = await DbContext.Articles.CountAsync();
+            publishedArticles = await DbContext.Articles.CountAsync(a => a.IsPublished);
+            totalComments = await DbContext.Comments.CountAsync();
+            totalViews = await DbContext.Articles.SumAsync(a => a.ViewCount);
+            
+            recentArticles = await DbContext.Articles
+                .OrderByDescending(a => a.CreatedAt)
+                .Take(5)
+                .ToListAsync();
+        }
+        catch
+        {
+            // En cas d'erreur, initialiser avec des valeurs par défaut
+            totalArticles = 0;
+            publishedArticles = 0;
+            totalComments = 0;
+            totalViews = 0;
+            recentArticles = new List<Article>();
+        }
+    }
+
+    private async Task SeedData()
+    {
+        try
+        {
+            await DataSeedService.SeedAllDataAsync();
+            await LoadStats();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            // Gérer l'erreur
+            Console.WriteLine($"Erreur lors de la génération des données: {ex.Message}");
+        }
+    }
+} 

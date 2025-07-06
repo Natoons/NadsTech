@@ -1,9 +1,10 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using NadsTech.Models;
 
 namespace NadsTech.Data;
 
-public class ApplicationDbContext : DbContext
+public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 {
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
         : base(options)
@@ -44,6 +45,19 @@ public class ApplicationDbContext : DbContext
             .WithMany(a => a.Reactions)
             .HasForeignKey(r => r.ArticleId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // Relations avec ApplicationUser
+        modelBuilder.Entity<Article>()
+            .HasOne(a => a.AuthorUser)
+            .WithMany(u => u.Articles)
+            .HasForeignKey(a => a.AuthorId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<Comment>()
+            .HasOne(c => c.AuthorUser)
+            .WithMany(u => u.Comments)
+            .HasForeignKey(c => c.AuthorId)
+            .OnDelete(DeleteBehavior.SetNull);
 
         // Index pour les performances
         modelBuilder.Entity<Article>()

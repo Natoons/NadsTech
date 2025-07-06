@@ -22,6 +22,8 @@ public class Article
     
     [StringLength(100)]
     public string? Author { get; set; }
+    public string? AuthorId { get; set; }
+    public virtual ApplicationUser? AuthorUser { get; set; }
     
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     

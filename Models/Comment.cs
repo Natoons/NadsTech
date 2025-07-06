@@ -15,6 +15,9 @@ public class Comment
     [EmailAddress]
     public string? AuthorEmail { get; set; }
     
+    public string? AuthorId { get; set; }
+    public virtual ApplicationUser? AuthorUser { get; set; }
+    
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     
     public DateTime? UpdatedAt { get; set; }
