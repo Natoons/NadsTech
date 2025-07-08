@@ -18,7 +18,14 @@
             <div class="flex @(msg.IsUser ? "justify-end" : "justify-start")">
                 <div class="rounded-xl px-3 py-1.5 max-w-[80%] shadow text-xs"
                      style="background:@(msg.IsUser ? "#2563eb" : "#f3f4f6");color:@(msg.IsUser ? "#fff" : "#222")">
-                    @msg.Text
+                    @if (msg.IsUser)
+                    {
+                        @msg.Text
+                    }
+                    else
+                    {
+                        <Markdown>@msg.Text</Markdown>
+                    }
                 </div>
             </div>
         }
