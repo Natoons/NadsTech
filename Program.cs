@@ -56,12 +56,17 @@ builder.Services.AddScoped<IDataSeedService, DataSeedService>();
 builder.Services.AddScoped<IIdentityService, IdentityService>();
 builder.Services.AddScoped<IArticleQaService, ArticleQaService>();
 builder.Services.AddScoped<IOpenRouterService, OpenRouterAnalysisService>();
+// Ajout du service KeywordTrendsService pour l'injection de dépendances
+builder.Services.AddHttpClient<IKeywordTrendsService, KeywordTrendsService>();
 
 // Configuration de SignalR pour les commentaires en temps réel
 builder.Services.AddSignalR();
 
 // Active les erreurs détaillées Blazor Server pour faciliter le debug des exceptions côté client et serveur.
 builder.Services.Configure<Microsoft.AspNetCore.Components.Server.CircuitOptions>(options => { options.DetailedErrors = true; });
+
+// Enregistrement du BackgroundService KeywordTrendsBackgroundService
+builder.Services.AddHostedService<KeywordTrendsBackgroundService>();
 
 
 var app = builder.Build();

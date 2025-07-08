@@ -15,6 +15,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Comment> Comments { get; set; }
     public DbSet<Reaction> Reactions { get; set; }
     public DbSet<ArticleQa> ArticleQas { get; set; }
+    public DbSet<KeywordTrendCache> KeywordTrends { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

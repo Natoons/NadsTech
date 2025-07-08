@@ -16,6 +16,7 @@
     <PackageReference Include="System.Text.Json" Version="9.0.6" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="9.0.6" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.UI" Version="9.0.6" />
+    <!-- Pour l'affichage graphique, ChartJs.Blazor ou Blazorise.Charts à ajouter si besoin -->
   </ItemGroup>
 
 </Project>

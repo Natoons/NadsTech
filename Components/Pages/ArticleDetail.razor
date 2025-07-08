@@ -116,6 +116,7 @@
     <!-- Sidebar droite -->
     <aside class="w-full lg:w-80 flex-shrink-0 space-y-6 sticky top-8 self-start h-[calc(100vh-4rem)] overflow-y-auto">
         <ChatArticleSidebar ArticleId="@ArticleId" ArticleTitle="@article?.Title" @rendermode="InteractiveServer" />
+        <KeywordTrendsSidebar Keywords="ArticleTags" />
         <HeatmapStatsSidebar />
     </aside>
 </div>
@@ -123,6 +124,7 @@
 @code {
     [Parameter] public int ArticleId { get; set; }
     private Article? article;
+    private IEnumerable<string> ArticleTags => article?.Tags ?? new List<string>();
 
     protected override async Task OnInitializedAsync()
     {

@@ -1,0 +1,81 @@
+@using NadsTech.Services
+@inject IKeywordTrendsService TrendsService
+@inject NavigationManager Navigation
+
+@code {
+    [Parameter] public IEnumerable<string> Keywords { get; set; } = new List<string>();
+    private List<KeywordTrend> Trends = new();
+    private bool IsLoading = true;
+    private bool ApiLimitReached = false;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Keywords.Any())
+        {
+            IsLoading = true;
+            ApiLimitReached = false;
+            var result = await TrendsService.GetTrendsAsync(Keywords.Take(1));
+            Trends = result.Trends;
+            ApiLimitReached = result.ApiLimitReached;
+            IsLoading = false;
+        }
+    }
+
+    // Palette de couleurs dégradée selon le volume
+    private string GetColor(int volume)
+    {
+        // Du vert (fort) au jaune (moyen) au rouge (faible)
+        if (volume >= 1000000) return "#22c55e"; // vert vif
+        if (volume >= 100000) return "#4ade80"; // vert clair
+        if (volume >= 10000) return "#fde047"; // jaune
+        if (volume >= 1000) return "#fbbf24"; // orange
+        return "#f87171"; // rouge
+    }
+
+    // Taille de bulle harmonieuse (min 60px, max 120px)
+    private int GetRadius(int volume)
+    {
+        if (volume >= 1000000) return 60;
+        if (volume >= 100000) return 48;
+        if (volume >= 10000) return 38;
+        if (volume >= 1000) return 30;
+        return 24;
+    }
+}
+
+<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+    <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white flex items-center gap-2">
+        <span>🔍</span> Tendances mots-clés (Google)
+    </h3>
+    @if (IsLoading)
+    {
+        <div class="text-gray-500 text-sm">Chargement des tendances...</div>
+    }
+    else if (ApiLimitReached)
+    {
+        <div class="text-red-500 text-sm font-semibold">Limite d'API atteinte, impossible de récupérer les tendances pour le moment.<br/>Réessaie dans quelques minutes.</div>
+    }
+    else if (Trends.Count == 0)
+    {
+        <div class="text-gray-400 text-sm">Aucun mot-clé à afficher.</div>
+    }
+    else
+    {
+        <div class="flex flex-wrap gap-4 justify-center items-center" style="min-height:120px">
+            @foreach (var trend in Trends.OrderByDescending(t => t.Volume).Take(15))
+            {
+                var r = GetRadius(trend.Volume);
+                <div style="width:@(r*2)px;height:@(r*2)px;display:flex;align-items:center;justify-content:center;position:relative;">
+                    <svg width="@(r*2)" height="@(r*2)" style="position:absolute;top:0;left:0;">
+                        <circle cx="@r" cy="@r" r="@r" fill="@GetColor(trend.Volume)" fill-opacity="0.85" />
+                    </svg>
+                    <div style="position:relative;z-index:1;text-align:center;width:100%;">
+                        <div style="font-weight:bold;font-size:1rem;color:#222;line-height:1.1;">@trend.Text</div>
+                        <div style="font-size:0.85rem;color:#64748b;">@trend.Volume</div>
+                    </div>
+                </div>
+            }
+        </div>
+        <div class="text-xs text-gray-400 mt-2 text-center">Taille = volume, couleur = popularité Google (vert = fort, rouge = faible)</div>
+    }
+</div> 
