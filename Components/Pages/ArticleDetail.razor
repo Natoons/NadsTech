@@ -1,0 +1,145 @@
+@page "/articles/{ArticleId:int}"
+@using NadsTech.Data
+@using NadsTech.Models
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.Authorization
+@using static Microsoft.AspNetCore.Components.Web.RenderMode
+@using Components.Pages.Shared
+@using NadsTech.Components.Pages.Shared
+@inject ApplicationDbContext DbContext
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>@(article?.Title ?? "Article")</PageTitle>
+
+<div class="flex flex-col lg:flex-row max-w-7xl mx-auto py-8 px-4 gap-8">
+    <!-- Colonne principale (article) -->
+    <div class="flex-1 min-w-0">
+        @if (article != null)
+        {
+            <div>
+                <!-- Header -->
+                <div class="mb-8">
+                    <div class="flex items-center gap-2 mb-4">
+                        @if (!string.IsNullOrEmpty(article.Category))
+                        {
+                            <span class="px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-sm font-medium rounded-full">
+                                @article.Category
+                            </span>
+                        }
+                        <span class="text-sm text-gray-500 dark:text-gray-400">
+                            @article.CreatedAt.ToString("dd MMM yyyy")
+                        </span>
+                        @if (!string.IsNullOrEmpty(article.Author))
+                        {
+                            <span class="text-sm text-gray-500 dark:text-gray-400">
+                                par @article.Author
+                            </span>
+                        }
+                    </div>
+                    <h1 class="text-4xl font-bold text-gray-900 dark:text-white mb-4">
+                        @article.Title
+                    </h1>
+                    @if (!string.IsNullOrEmpty(article.Summary))
+                    {
+                        <p class="text-xl text-gray-600 dark:text-gray-300 mb-6">
+                            @article.Summary
+                        </p>
+                    }
+                </div>
+                <!-- Image principale -->
+                @if (!string.IsNullOrEmpty(article.ImageUrl))
+                {
+                    <div class="mb-8">
+                        <img src="@article.ImageUrl" alt="@article.Title" class="w-full h-64 md:h-96 object-cover rounded-lg" />
+                    </div>
+                }
+                <!-- Contenu -->
+                <div class="bg-white dark:bg-gray-800 rounded-lg p-6 mb-8">
+                    <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">Contenu de l'article</h2>
+                    @if (!string.IsNullOrEmpty(article.Content))
+                    {
+                        <div class="prose prose-lg dark:prose-invert max-w-none">
+                            @((MarkupString)article.Content)
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-gray-500 dark:text-gray-400 italic">
+                            Aucun contenu disponible pour cet article.
+                        </div>
+                    }
+                </div>
+                <!-- Tags -->
+                @if (article.Tags.Any())
+                {
+                    <div class="mt-8 pt-8 border-t border-gray-200 dark:border-gray-700">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Tags</h3>
+                        <div class="flex flex-wrap gap-2">
+                            @foreach (var tag in article.Tags)
+                            {
+                                <span class="px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm rounded-full">
+                                    @tag
+                                </span>
+                            }
+                        </div>
+                    </div>
+                }
+                <!-- Statistiques -->
+                <div class="mt-8 pt-8 border-t border-gray-200 dark:border-gray-700">
+                    <div class="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
+                        <div class="flex items-center space-x-6">
+                            <span>👁️ @article.ViewCount vues</span>
+                            <span>❤️ @article.LikeCount likes</span>
+                            <span>📤 @article.ShareCount partages</span>
+                        </div>
+                        <button @onclick="GoBack" 
+                                class="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+                            Retour aux articles
+                        </button>
+                    </div>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="max-w-4xl mx-auto py-8 px-4 text-center">
+                <h1 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">Article non trouvé</h1>
+                <p class="text-gray-600 dark:text-gray-400 mb-6">L'article que vous recherchez n'existe pas ou a été supprimé.</p>
+                <button @onclick="GoBack" 
+                        class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                    Retour aux articles
+                </button>
+            </div>
+        }
+    </div>
+    <!-- Sidebar droite -->
+    <aside class="w-full lg:w-80 flex-shrink-0 space-y-6 sticky top-8 self-start h-[calc(100vh-4rem)] overflow-y-auto">
+        <ChatArticleSidebar ArticleId="@ArticleId" ArticleTitle="@article?.Title" @rendermode="InteractiveServer" />
+        <KeywordTrendsSidebar Keywords="ArticleTags" />
+        <HeatmapStatsSidebar />
+    </aside>
+</div>
+
+@code {
+    [Parameter] public int ArticleId { get; set; }
+    private Article? article;
+    private IEnumerable<string> ArticleTags => article?.Tags ?? new List<string>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        article = await DbContext.Articles.FirstOrDefaultAsync(a => a.Id == ArticleId);
+        
+        if (article != null)
+        {
+            // Incrémenter le compteur de vues
+            article.ViewCount++;
+            await DbContext.SaveChangesAsync();
+        }
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/articles");
+    }
+} 

@@ -1,0 +1,127 @@
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.Components.Authorization
+@using NadsTech.Models
+@using static Microsoft.AspNetCore.Components.Web.RenderMode
+@rendermode InteractiveServer
+@inject SignInManager<ApplicationUser> SignInManager
+@inject UserManager<ApplicationUser> UserManager
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@implements IDisposable
+
+<div class="relative">
+    @if (currentUser != null)
+    {
+        <div class="flex items-center space-x-4">
+            <div class="relative">
+                <button @onclick="ToggleUserMenu" 
+                        class="flex items-center space-x-2 text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                    <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
+                        @(currentUser?.FirstName?.FirstOrDefault() ?? currentUser?.Email?.FirstOrDefault() ?? 'U')
+                    </div>
+                    <span class="hidden md:block">@(currentUser?.FirstName ?? currentUser?.Email)</span>
+                    <svg class="w-4 h-4 transition-transform @(showUserMenu ? "rotate-180" : "")" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                    </svg>
+                </button>
+
+                @if (showUserMenu)
+                {
+                    <div class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 z-50 border border-gray-200 dark:border-gray-700">
+                        <div class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">
+                            <div class="font-medium">@(currentUser?.FirstName) @(currentUser?.LastName)</div>
+                            <div class="text-gray-500 dark:text-gray-400">@currentUser?.Email</div>
+                        </div>
+                        
+                        @if (isAdmin)
+                        {
+                            <a href="/admin" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                                Administration
+                            </a>
+                        }
+                        @* Lien Mes articles et Déposer un article pour Author et Admin *@
+                        <a href="/my-articles" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                            Mes articles
+                        </a>
+                        <a href="/create-article" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                            Déposer un article
+                        </a>
+                        <a href="/profile" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                            Mon profil
+                        </a>
+                        
+                        <a href="/Auth/Logout" 
+                           class="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                            Se déconnecter
+                        </a>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="flex items-center space-x-4">
+            <a href="/Auth/Login" class="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400">
+                Se connecter
+            </a>
+            <a href="/register" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                S'inscrire
+            </a>
+        </div>
+    }
+</div>
+
+@code {
+    private ApplicationUser? currentUser;
+    private bool showUserMenu = false;
+    private bool isAdmin = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUserData();
+    }
+
+    private async Task LoadUserData()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            currentUser = await UserManager.GetUserAsync(user);
+            if (currentUser != null)
+            {
+                isAdmin = await UserManager.IsInRoleAsync(currentUser, "Admin");
+            }
+        }
+        else
+        {
+            currentUser = null;
+            isAdmin = false;
+        }
+    }
+
+    private void ToggleUserMenu()
+    {
+        showUserMenu = !showUserMenu;
+        StateHasChanged();
+    }
+
+    private void CloseUserMenu()
+    {
+        showUserMenu = false;
+        StateHasChanged();
+    }
+
+    public async Task RefreshUserData()
+    {
+        await LoadUserData();
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        // Cleanup if needed
+    }
+} 

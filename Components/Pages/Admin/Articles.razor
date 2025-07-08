@@ -1,0 +1,170 @@
+@page "/admin/articles"
+@using NadsTech.Data
+@using NadsTech.Models
+@using Microsoft.EntityFrameworkCore
+@using static Microsoft.AspNetCore.Components.Web.RenderMode
+@inject ApplicationDbContext DbContext
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Gestion des articles - Administration</PageTitle>
+
+<div class="max-w-6xl mx-auto py-8 px-4">
+    <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-8">Gestion des articles</h1>
+    
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+            <h3 class="text-lg font-medium text-gray-900 dark:text-white">Articles</h3>
+        </div>
+        
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead class="bg-gray-50 dark:bg-gray-700">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Article</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Auteur</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Statut</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    @if (articles?.Any() == true)
+                    {
+                        @foreach (var article in articles)
+                        {
+                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="flex items-center">
+                                        @if (!string.IsNullOrEmpty(article.ImageUrl))
+                                        {
+                                            <img src="@article.ImageUrl" alt="@article.Title" class="w-10 h-10 rounded-lg object-cover mr-3" />
+                                        }
+                                        <div>
+                                            <div class="text-sm font-medium text-gray-900 dark:text-white">@article.Title</div>
+                                            <div class="text-sm text-gray-500 dark:text-gray-400">@article.Category</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                                    @article.Author
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2 py-1 text-xs font-medium rounded-full @(article.IsPublished ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200")">
+                                        @(article.IsPublished ? "Publié" : "Brouillon")
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                    <div class="flex items-center space-x-2">
+                                        <button @onclick="() => EditArticle(article.Id)" 
+                                                class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">
+                                            Modifier
+                                        </button>
+                                        <button @onclick="() => TogglePublishStatus(article)" 
+                                                class="px-3 py-1 @(article.IsPublished ? "bg-red-600 hover:bg-red-700" : "bg-green-600 hover:bg-green-700") text-white rounded">
+                                            @(article.IsPublished ? "Dépublier" : "Publier")
+                                        </button>
+                                        <button @onclick="() => DeleteArticle(article.Id)" 
+                                                class="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700">
+                                            Supprimer
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="4" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+                                Aucun article trouvé
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<Article>? articles;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadArticles();
+    }
+
+    private async Task LoadArticles()
+    {
+        try
+        {
+            articles = await DbContext.Articles
+                .OrderByDescending(a => a.CreatedAt)
+                .ToListAsync();
+            
+            Console.WriteLine($"Articles chargés: {articles?.Count ?? 0}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Erreur lors du chargement des articles: {ex.Message}");
+            articles = new List<Article>();
+        }
+    }
+
+    private void EditArticle(int articleId)
+    {
+        Console.WriteLine($"EditArticle appelé pour l'article {articleId}");
+        Navigation.NavigateTo($"/admin/articles/edit/{articleId}");
+    }
+
+    private async Task TogglePublishStatus(Article article)
+    {
+        try
+        {
+            Console.WriteLine($"TogglePublishStatus appelé pour l'article {article.Id}");
+            article.IsPublished = !article.IsPublished;
+            article.UpdatedAt = DateTime.UtcNow;
+            
+            if (article.IsPublished && article.PublishedAt == null)
+            {
+                article.PublishedAt = DateTime.UtcNow;
+            }
+            
+            await DbContext.SaveChangesAsync();
+            Console.WriteLine("Sauvegarde terminée");
+            
+            await LoadArticles();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Erreur lors du changement de statut: {ex.Message}");
+        }
+    }
+
+    private async Task DeleteArticle(int articleId)
+    {
+        try
+        {
+            Console.WriteLine($"DeleteArticle appelé pour l'article {articleId}");
+            var article = await DbContext.Articles.FindAsync(articleId);
+            if (article != null)
+            {
+                Console.WriteLine($"Article trouvé: {article.Title}");
+                DbContext.Articles.Remove(article);
+                await DbContext.SaveChangesAsync();
+                Console.WriteLine("Article supprimé");
+                await LoadArticles();
+                StateHasChanged();
+            }
+            else
+            {
+                Console.WriteLine($"Article {articleId} non trouvé");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Erreur lors de la suppression: {ex.Message}");
+        }
+    }
+} 

@@ -1,0 +1,162 @@
+@page "/my-articles"
+@using NadsTech.Data
+@using NadsTech.Models
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.Components.Authorization
+@inject ApplicationDbContext DbContext
+@inject NavigationManager Navigation
+@inject UserManager<ApplicationUser> UserManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin,Author")]
+@using static Microsoft.AspNetCore.Components.Web.RenderMode
+@rendermode InteractiveServer
+
+<PageTitle>Mes articles</PageTitle>
+
+<div class="max-w-6xl mx-auto py-8 px-4">
+    <div class="mb-8">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">Mes articles</h1>
+                <p class="text-gray-600 dark:text-gray-400">Gérez vos articles et brouillons</p>
+            </div>
+            <button @onclick="@(() => Navigation.NavigateTo("/create-article"))" 
+                    class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                Nouvel article
+            </button>
+        </div>
+    </div>
+
+    @if (myArticles.Any())
+    {
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            @foreach (var article in myArticles)
+            {
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
+                    @if (!string.IsNullOrEmpty(article.ImageUrl))
+                    {
+                        <img src="@article.ImageUrl" alt="@article.Title" class="w-full h-48 object-cover" />
+                    }
+                    <div class="p-6">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="flex items-center space-x-2">
+                                @if (!string.IsNullOrEmpty(article.Category))
+                                {
+                                    <span class="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs font-medium rounded-full">
+                                        @article.Category
+                                    </span>
+                                }
+                                @if (article.IsPublished)
+                                {
+                                    <span class="px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs font-medium rounded-full">
+                                        Publié
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="px-2 py-1 bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 text-xs font-medium rounded-full">
+                                        Brouillon
+                                    </span>
+                                }
+                            </div>
+                            <span class="text-sm text-gray-500 dark:text-gray-400">
+                                @article.CreatedAt.ToString("dd MMM yyyy")
+                            </span>
+                        </div>
+                        
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2 line-clamp-2">
+                            @article.Title
+                        </h3>
+                        
+                        @if (!string.IsNullOrEmpty(article.Summary))
+                        {
+                            <p class="text-gray-600 dark:text-gray-300 mb-4 line-clamp-3">
+                                @article.Summary
+                            </p>
+                        }
+                        
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400">
+                                <span>👁️ @article.ViewCount vues</span>
+                                <span>❤️ @article.LikeCount likes</span>
+                                <span>📤 @article.ShareCount partages</span>
+                            </div>
+                            
+                            <div class="flex items-center space-x-2">
+                                <button @onclick="@(() => Navigation.NavigateTo($"/admin/articles/edit/{article.Id}"))"
+                                        class="px-3 py-1 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+                                    Modifier
+                                </button>
+                                @if (!article.IsPublished)
+                                {
+                                    <button @onclick="@(() => PublishArticle(article.Id))"
+                                            class="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700 transition-colors">
+                                        Publier
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="text-center py-12">
+            <div class="text-gray-400 dark:text-gray-600 mb-4">
+                <svg class="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+            </div>
+            <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">Aucun article trouvé</h3>
+            <p class="text-gray-600 dark:text-gray-400 mb-6">Commencez par créer votre premier article !</p>
+            <button @onclick="@(() => Navigation.NavigateTo("/create-article"))"
+                    class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                Créer mon premier article
+            </button>
+        </div>
+    }
+</div>
+
+@code {
+    private List<Article> myArticles = new();
+    private ApplicationUser? currentUser;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = await UserManager.GetUserAsync(authState.User);
+        if (user != null)
+        {
+            currentUser = user;
+            await LoadMyArticles();
+        }
+    }
+
+    private async Task LoadMyArticles()
+    {
+        if (currentUser != null)
+        {
+            myArticles = await DbContext.Articles
+                .Where(a => a.AuthorId == currentUser.Id)
+                .OrderByDescending(a => a.CreatedAt)
+                .ToListAsync();
+        }
+    }
+
+    private async Task PublishArticle(int articleId)
+    {
+        if (currentUser == null) return;
+        var article = await DbContext.Articles.FirstOrDefaultAsync(a => a.Id == articleId && a.AuthorId == currentUser.Id);
+        if (article != null)
+        {
+            article.IsPublished = true;
+            article.PublishedAt = DateTime.Now;
+            await DbContext.SaveChangesAsync();
+            await LoadMyArticles();
+            StateHasChanged();
+        }
+    }
+} 

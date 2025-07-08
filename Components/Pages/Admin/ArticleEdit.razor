@@ -1,0 +1,301 @@
+@page "/admin/articles/new"
+@page "/admin/articles/edit/{ArticleId:int}"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
+@using NadsTech.Data
+@using NadsTech.Models
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.JSInterop
+@using static Microsoft.AspNetCore.Components.Web.RenderMode
+@inject ApplicationDbContext DbContext
+@inject NavigationManager Navigation
+@inject IWebHostEnvironment Env
+@inject IJSRuntime JS
+@rendermode InteractiveServer
+
+<PageTitle>@(IsEditMode ? "Modifier l'article" : "Nouvel article")</PageTitle>
+
+<div class="max-w-3xl mx-auto py-8">
+    <h1 class="text-2xl font-bold mb-6 text-gray-900 dark:text-white">@(IsEditMode ? "Modifier l'article" : "Nouvel article")</h1>
+    <EditForm Model="articleModel" OnValidSubmit="HandleValidSubmit">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+        <div class="space-y-6">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Titre</label>
+                <InputText class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:bg-gray-700 dark:text-white" @bind-Value="articleModel.Title" />
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Résumé</label>
+                <InputTextArea class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:bg-gray-700 dark:text-white" @bind-Value="articleModel.Summary" />
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Catégorie</label>
+                    <InputText class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:bg-gray-700 dark:text-white" @bind-Value="articleModel.Category" />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Tags (séparés par des virgules)</label>
+                    <InputText class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:bg-gray-700 dark:text-white" @bind-Value="tagsString" />
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Image principale</label>
+                @if (!string.IsNullOrEmpty(articleModel.ImageUrl))
+                {
+                    <img src="@articleModel.ImageUrl" alt="Image" class="w-full h-48 object-cover rounded mb-2" />
+                }
+                <InputFile OnChange="HandleImageUpload" />
+                @if (!string.IsNullOrEmpty(uploadError))
+                {
+                    <div class="text-red-600 text-sm mt-1">@uploadError</div>
+                }
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Contenu</label>
+                <div id="quill-editor" class="min-h-[400px] border border-gray-300 dark:border-gray-600 rounded-lg"></div>
+                @if (!string.IsNullOrEmpty(contentError))
+                {
+                    <div class="text-red-600 text-sm mt-1">@contentError</div>
+                }
+            </div>
+            <div class="flex items-center space-x-4">
+                <label class="flex items-center">
+                    <input type="checkbox" class="form-checkbox h-5 w-5 text-blue-600" @bind="articleModel.IsPublished" />
+                    <span class="ml-2 text-gray-700 dark:text-gray-300">Publié</span>
+                </label>
+                <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                    @(IsEditMode ? "Enregistrer les modifications" : "Créer l'article")
+                </button>
+                <button type="button" class="px-6 py-2 bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-400 dark:hover:bg-gray-600 transition-colors" @onclick="GoBack">
+                    Annuler
+                </button>
+            </div>
+        </div>
+    </EditForm>
+</div>
+
+@code {
+    [Parameter] public int? ArticleId { get; set; }
+    private Article articleModel = new();
+    private string tagsString = "";
+    private string uploadError = "";
+    private string contentError = "";
+    private bool IsEditMode => ArticleId.HasValue;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (IsEditMode)
+        {
+            var article = await DbContext.Articles.FirstOrDefaultAsync(a => a.Id == ArticleId);
+            if (article != null)
+            {
+                articleModel = article;
+                tagsString = string.Join(", ", article.Tags);
+            }
+            else
+            {
+                Navigation.NavigateTo("/admin/articles");
+            }
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await LoadQuillScripts();
+            await Task.Delay(1000);
+            await InitQuillEditor();
+        }
+    }
+
+    private async Task LoadQuillScripts()
+    {
+        try
+        {
+            // Charger Quill CSS
+            await JS.InvokeVoidAsync("eval", @"
+                if (!document.querySelector('link[href*=""quill.snow.css""]')) {
+                    var link = document.createElement('link');
+                    link.rel = 'stylesheet';
+                    link.href = 'https://cdn.quilljs.com/1.3.6/quill.snow.css';
+                    document.head.appendChild(link);
+                }
+            ");
+
+            // Charger Quill JS
+            await JS.InvokeVoidAsync("eval", @"
+                if (typeof Quill === 'undefined') {
+                    var script = document.createElement('script');
+                    script.src = 'https://cdn.quilljs.com/1.3.6/quill.min.js';
+                    script.onload = function() {
+                        console.log('Quill JS chargé');
+                        if (typeof window.QuillBlazor === 'undefined') {
+                            window.QuillBlazor = {
+                                editors: {},
+                                create: function(elementId, dotNetRef, content) {
+                                    var element = document.getElementById(elementId);
+                                    if (!element) {
+                                        console.error('Element not found:', elementId);
+                                        return;
+                                    }
+                                    if (typeof Quill === 'undefined') {
+                                        console.error('Quill is not loaded');
+                                        return;
+                                    }
+                                    var quill = new Quill('#' + elementId, {
+                                        theme: 'snow',
+                                        modules: {
+                                            toolbar: [
+                                                [{ header: [1, 2, false] }],
+                                                ['bold', 'italic', 'underline'],
+                                                ['image', 'code-block'],
+                                                [{ list: 'ordered' }, { list: 'bullet' }],
+                                                ['clean']
+                                            ]
+                                        }
+                                    });
+                                    if (content) {
+                                        quill.root.innerHTML = content;
+                                    }
+                                    this.editors[elementId] = quill;
+                                    console.log('Quill editor created for:', elementId);
+                                },
+                                getContent: function(elementId) {
+                                    var quill = this.editors[elementId];
+                                    if (quill) {
+                                        return quill.root.innerHTML;
+                                    }
+                                    return '';
+                                }
+                            };
+                            console.log('QuillBlazor créé');
+                        }
+                    };
+                    document.head.appendChild(script);
+                }
+            ");
+
+            await JS.InvokeVoidAsync("console.log", "Scripts Quill chargés");
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("console.error", "Erreur lors du chargement des scripts:", ex.Message);
+        }
+    }
+
+    private async Task InitQuillEditor()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("console.log", "Initialisation de l'éditeur Quill...");
+            await JS.InvokeVoidAsync("QuillBlazor.create", "quill-editor", null, articleModel.Content);
+            await JS.InvokeVoidAsync("console.log", "Éditeur Quill initialisé");
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("console.error", "Erreur lors de l'initialisation de Quill:", ex.Message);
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        uploadError = "";
+        contentError = "";
+        
+        try
+        {
+            // Récupérer le contenu de l'éditeur Quill
+            articleModel.Content = await JS.InvokeAsync<string>("QuillBlazor.getContent", "quill-editor");
+            
+            if (string.IsNullOrWhiteSpace(articleModel.Content))
+            {
+                contentError = "Le contenu de l'article est requis.";
+                StateHasChanged();
+                return;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Erreur lors de la récupération du contenu: {ex.Message}");
+        }
+        
+        try
+        {
+            // Traitement des tags
+            if (!string.IsNullOrWhiteSpace(tagsString))
+            {
+                articleModel.Tags = tagsString.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(tag => tag.Trim())
+                    .Where(tag => !string.IsNullOrEmpty(tag))
+                    .ToList();
+            }
+
+            if (IsEditMode)
+            {
+                articleModel.UpdatedAt = DateTime.UtcNow;
+                DbContext.Articles.Update(articleModel);
+            }
+            else
+            {
+                articleModel.CreatedAt = DateTime.UtcNow;
+                articleModel.UpdatedAt = DateTime.UtcNow;
+                DbContext.Articles.Add(articleModel);
+            }
+            
+            await DbContext.SaveChangesAsync();
+            Navigation.NavigateTo("/admin/articles");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Erreur lors de la sauvegarde: {ex.Message}");
+            contentError = "Une erreur s'est produite lors de la sauvegarde de l'article.";
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleImageUpload(InputFileChangeEventArgs e)
+    {
+        try
+        {
+            var file = e.File;
+            if (file.Size > 5 * 1024 * 1024) // 5MB max
+            {
+                uploadError = "L'image ne doit pas dépasser 5MB.";
+                return;
+            }
+
+            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
+            var extension = Path.GetExtension(file.Name).ToLowerInvariant();
+            if (!allowedExtensions.Contains(extension))
+            {
+                uploadError = "Format d'image non supporté. Utilisez JPG, PNG, GIF ou WebP.";
+                return;
+            }
+
+            var fileName = $"article_{Guid.NewGuid()}{extension}";
+            var uploadPath = Path.Combine(Env.WebRootPath, "uploads");
+            Directory.CreateDirectory(uploadPath);
+            var filePath = Path.Combine(uploadPath, fileName);
+
+            using var stream = file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024);
+            using var fileStream = File.Create(filePath);
+            await stream.CopyToAsync(fileStream);
+
+            articleModel.ImageUrl = $"/uploads/{fileName}";
+            uploadError = "";
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            uploadError = $"Erreur lors du téléchargement: {ex.Message}";
+            StateHasChanged();
+        }
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/admin/articles");
+    }
+} 
