@@ -196,3 +196,10 @@ Ce projet est sous licence MIT. Voir le fichier `LICENSE` pour plus de détails.
 
 **NadsTech** - L'actualité tech analysée par l'IA 🤖✨
 
+## ScreenShot
+
+
+<img width="1485" alt="Capture d’écran 2025-07-08 à 22 52 40" src="https://github.com/user-attachments/assets/878e0b24-7a98-4304-ba01-eb8d8dc966e7" />
+
+
+
