@@ -2,6 +2,8 @@
 @using NadsTech.Models
 @using NadsTech.Data
 @using Microsoft.EntityFrameworkCore
+@using static Microsoft.AspNetCore.Components.Web.RenderMode
+@rendermode InteractiveServer
 @inject ApplicationDbContext DbContext
 @inject NavigationManager Navigation
 
@@ -87,7 +89,7 @@
                                         @article.LikeCount
                                     </span>
                                 </div>
-                                <button @onclick="@(() => Navigation.NavigateTo($"/article/{article.Id}"))" 
+                                <button @onclick="@(() => Navigation.NavigateTo($"/articles/{article.Id}"))" 
                                         class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium">
                                     Lire plus →
                                 </button>

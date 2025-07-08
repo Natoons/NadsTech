@@ -620,3 +620,4 @@ docker-compose.override.yml
 .vscode/settings.json
 .vscode/launch.json
 .vscode/tasks.json
+wwwroot/uploads/

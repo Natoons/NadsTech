@@ -4,6 +4,9 @@ using NadsTech.Models;
 using NadsTech.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
+using DotNetEnv;
+
+Env.Load();
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -51,9 +54,15 @@ builder.Services.AddHttpClient();
 builder.Services.AddScoped<IAnalysisService, OpenRouterAnalysisService>();
 builder.Services.AddScoped<IDataSeedService, DataSeedService>();
 builder.Services.AddScoped<IIdentityService, IdentityService>();
+builder.Services.AddScoped<IArticleQaService, ArticleQaService>();
+builder.Services.AddScoped<IOpenRouterService, OpenRouterAnalysisService>();
 
 // Configuration de SignalR pour les commentaires en temps réel
 builder.Services.AddSignalR();
+
+// Active les erreurs détaillées Blazor Server pour faciliter le debug des exceptions côté client et serveur.
+builder.Services.Configure<Microsoft.AspNetCore.Components.Server.CircuitOptions>(options => { options.DetailedErrors = true; });
+
 
 var app = builder.Build();
 
@@ -77,6 +86,8 @@ app.UseAntiforgery();
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
+
+app.MapControllers(); // ← Ajouté pour exposer les routes API
 
 // Map MVC routes
 app.MapControllerRoute(

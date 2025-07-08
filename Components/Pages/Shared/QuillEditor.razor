@@ -1,0 +1,43 @@
+@using Microsoft.JSInterop
+@using System.Linq.Expressions
+
+@inject IJSRuntime JS
+
+@implements IAsyncDisposable
+
+<div id="@ElementId" style="height:300px;"></div>
+
+@code {
+    [Parameter] public string? value { get; set; }
+    [Parameter] public EventCallback<string> valueChanged { get; set; }
+    [Parameter] public Expression<Func<string>>? valueExpression { get; set; }
+    private string ElementId = $"quill-editor-{Guid.NewGuid().ToString().Replace("-", "")}";
+    private DotNetObjectReference<QuillEditor>? objRef;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            objRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("QuillBlazor.create", ElementId, objRef, value);
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnQuillContentChanged(string html)
+    {
+        if (value != html)
+        {
+            value = html;
+            await valueChanged.InvokeAsync(html);
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (objRef != null)
+        {
+            objRef.Dispose();
+        }
+    }
+} 

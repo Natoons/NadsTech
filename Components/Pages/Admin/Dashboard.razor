@@ -5,6 +5,8 @@
 @using Microsoft.EntityFrameworkCore
 @inject ApplicationDbContext DbContext
 @inject IDataSeedService DataSeedService
+@using static Microsoft.AspNetCore.Components.Web.RenderMode
+@rendermode InteractiveServer
 @layout AdminLayout
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
 

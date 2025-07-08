@@ -14,6 +14,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Article> Articles { get; set; }
     public DbSet<Comment> Comments { get; set; }
     public DbSet<Reaction> Reactions { get; set; }
+    public DbSet<ArticleQa> ArticleQas { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -6,10 +6,12 @@
 @using Microsoft.EntityFrameworkCore
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.JSInterop
+@using static Microsoft.AspNetCore.Components.Web.RenderMode
 @inject ApplicationDbContext DbContext
 @inject NavigationManager Navigation
 @inject IWebHostEnvironment Env
 @inject IJSRuntime JS
+@rendermode InteractiveServer
 
 <PageTitle>@(IsEditMode ? "Modifier l'article" : "Nouvel article")</PageTitle>
 
@@ -51,8 +53,7 @@
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Contenu</label>
-                <textarea id="editor" class="hidden" @bind="articleModel.Content"></textarea>
-                <div id="editor-container"></div>
+                <div id="quill-editor" class="min-h-[400px] border border-gray-300 dark:border-gray-600 rounded-lg"></div>
                 @if (!string.IsNullOrEmpty(contentError))
                 {
                     <div class="text-red-600 text-sm mt-1">@contentError</div>
@@ -103,94 +104,194 @@
     {
         if (firstRender)
         {
-            await JS.InvokeVoidAsync("eval", @"
-                if (!window.tinymceLoaded) {
-                  var script = document.createElement('script');
-                  script.src = 'https://cdn.tiny.cloud/1/no-api-key/tinymce/6/tinymce.min.js';
-                  script.referrerPolicy = 'origin';
-                  script.onload = function() {
-                    window.tinymceLoaded = true;
-                    tinymce.init({
-                      selector: '#editor',
-                      height: 400,
-                      menubar: false,
-                      plugins: 'link image code lists table',
-                      toolbar: 'undo redo | formatselect | bold italic underline | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | link image | code',
-                      setup: function (editor) {
-                        editor.on('Change KeyUp', function () {
-                          window.DotNet.invokeMethodAsync('NadsTech', 'UpdateEditorContent', editor.getContent());
-                        });
-                      }
-                    });
-                  };
-                  document.head.appendChild(script);
-                } else {
-                  tinymce.init({
-                    selector: '#editor',
-                    height: 400,
-                    menubar: false,
-                    plugins: 'link image code lists table',
-                    toolbar: 'undo redo | formatselect | bold italic underline | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | link image | code',
-                    setup: function (editor) {
-                      editor.on('Change KeyUp', function () {
-                        window.DotNet.invokeMethodAsync('NadsTech', 'UpdateEditorContent', editor.getContent());
-                      });
-                    }
-                  });
-                }
-            ");
+            await LoadQuillScripts();
+            await Task.Delay(1000);
+            await InitQuillEditor();
         }
     }
 
-    [JSInvokable("UpdateEditorContent")]
-    public static void UpdateEditorContent(string content)
+    private async Task LoadQuillScripts()
     {
-        // Cette méthode sera utilisée pour synchroniser le contenu TinyMCE
-        // avec le modèle côté C# si besoin (à compléter si besoin)
+        try
+        {
+            // Charger Quill CSS
+            await JS.InvokeVoidAsync("eval", @"
+                if (!document.querySelector('link[href*=""quill.snow.css""]')) {
+                    var link = document.createElement('link');
+                    link.rel = 'stylesheet';
+                    link.href = 'https://cdn.quilljs.com/1.3.6/quill.snow.css';
+                    document.head.appendChild(link);
+                }
+            ");
+
+            // Charger Quill JS
+            await JS.InvokeVoidAsync("eval", @"
+                if (typeof Quill === 'undefined') {
+                    var script = document.createElement('script');
+                    script.src = 'https://cdn.quilljs.com/1.3.6/quill.min.js';
+                    script.onload = function() {
+                        console.log('Quill JS chargé');
+                        if (typeof window.QuillBlazor === 'undefined') {
+                            window.QuillBlazor = {
+                                editors: {},
+                                create: function(elementId, dotNetRef, content) {
+                                    var element = document.getElementById(elementId);
+                                    if (!element) {
+                                        console.error('Element not found:', elementId);
+                                        return;
+                                    }
+                                    if (typeof Quill === 'undefined') {
+                                        console.error('Quill is not loaded');
+                                        return;
+                                    }
+                                    var quill = new Quill('#' + elementId, {
+                                        theme: 'snow',
+                                        modules: {
+                                            toolbar: [
+                                                [{ header: [1, 2, false] }],
+                                                ['bold', 'italic', 'underline'],
+                                                ['image', 'code-block'],
+                                                [{ list: 'ordered' }, { list: 'bullet' }],
+                                                ['clean']
+                                            ]
+                                        }
+                                    });
+                                    if (content) {
+                                        quill.root.innerHTML = content;
+                                    }
+                                    this.editors[elementId] = quill;
+                                    console.log('Quill editor created for:', elementId);
+                                },
+                                getContent: function(elementId) {
+                                    var quill = this.editors[elementId];
+                                    if (quill) {
+                                        return quill.root.innerHTML;
+                                    }
+                                    return '';
+                                }
+                            };
+                            console.log('QuillBlazor créé');
+                        }
+                    };
+                    document.head.appendChild(script);
+                }
+            ");
+
+            await JS.InvokeVoidAsync("console.log", "Scripts Quill chargés");
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("console.error", "Erreur lors du chargement des scripts:", ex.Message);
+        }
+    }
+
+    private async Task InitQuillEditor()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("console.log", "Initialisation de l'éditeur Quill...");
+            await JS.InvokeVoidAsync("QuillBlazor.create", "quill-editor", null, articleModel.Content);
+            await JS.InvokeVoidAsync("console.log", "Éditeur Quill initialisé");
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("console.error", "Erreur lors de l'initialisation de Quill:", ex.Message);
+        }
     }
 
     private async Task HandleValidSubmit()
     {
         uploadError = "";
         contentError = "";
-        articleModel.Tags = tagsString.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
-        if (string.IsNullOrWhiteSpace(articleModel.Content))
+        
+        try
         {
-            contentError = "Le contenu de l'article est requis.";
-            return;
+            // Récupérer le contenu de l'éditeur Quill
+            articleModel.Content = await JS.InvokeAsync<string>("QuillBlazor.getContent", "quill-editor");
+            
+            if (string.IsNullOrWhiteSpace(articleModel.Content))
+            {
+                contentError = "Le contenu de l'article est requis.";
+                StateHasChanged();
+                return;
+            }
         }
-        if (IsEditMode)
+        catch (Exception ex)
         {
-            DbContext.Articles.Update(articleModel);
+            Console.WriteLine($"Erreur lors de la récupération du contenu: {ex.Message}");
         }
-        else
+        
+        try
         {
-            articleModel.CreatedAt = DateTime.Now;
-            DbContext.Articles.Add(articleModel);
+            // Traitement des tags
+            if (!string.IsNullOrWhiteSpace(tagsString))
+            {
+                articleModel.Tags = tagsString.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(tag => tag.Trim())
+                    .Where(tag => !string.IsNullOrEmpty(tag))
+                    .ToList();
+            }
+
+            if (IsEditMode)
+            {
+                articleModel.UpdatedAt = DateTime.UtcNow;
+                DbContext.Articles.Update(articleModel);
+            }
+            else
+            {
+                articleModel.CreatedAt = DateTime.UtcNow;
+                articleModel.UpdatedAt = DateTime.UtcNow;
+                DbContext.Articles.Add(articleModel);
+            }
+            
+            await DbContext.SaveChangesAsync();
+            Navigation.NavigateTo("/admin/articles");
         }
-        await DbContext.SaveChangesAsync();
-        Navigation.NavigateTo("/admin/articles");
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Erreur lors de la sauvegarde: {ex.Message}");
+            contentError = "Une erreur s'est produite lors de la sauvegarde de l'article.";
+            StateHasChanged();
+        }
     }
 
     private async Task HandleImageUpload(InputFileChangeEventArgs e)
     {
-        uploadError = "";
-        var file = e.File;
-        if (file == null) return;
-        if (!file.ContentType.StartsWith("image/"))
+        try
         {
-            uploadError = "Le fichier doit être une image.";
-            return;
+            var file = e.File;
+            if (file.Size > 5 * 1024 * 1024) // 5MB max
+            {
+                uploadError = "L'image ne doit pas dépasser 5MB.";
+                return;
+            }
+
+            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
+            var extension = Path.GetExtension(file.Name).ToLowerInvariant();
+            if (!allowedExtensions.Contains(extension))
+            {
+                uploadError = "Format d'image non supporté. Utilisez JPG, PNG, GIF ou WebP.";
+                return;
+            }
+
+            var fileName = $"article_{Guid.NewGuid()}{extension}";
+            var uploadPath = Path.Combine(Env.WebRootPath, "uploads");
+            Directory.CreateDirectory(uploadPath);
+            var filePath = Path.Combine(uploadPath, fileName);
+
+            using var stream = file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024);
+            using var fileStream = File.Create(filePath);
+            await stream.CopyToAsync(fileStream);
+
+            articleModel.ImageUrl = $"/uploads/{fileName}";
+            uploadError = "";
+            StateHasChanged();
         }
-        var uploads = Path.Combine(Env.WebRootPath, "uploads");
-        if (!Directory.Exists(uploads)) Directory.CreateDirectory(uploads);
-        var fileName = $"article_{Guid.NewGuid()}{Path.GetExtension(file.Name)}";
-        var filePath = Path.Combine(uploads, fileName);
-        using (var stream = File.Create(filePath))
+        catch (Exception ex)
         {
-            await file.OpenReadStream(5 * 1024 * 1024).CopyToAsync(stream);
+            uploadError = $"Erreur lors du téléchargement: {ex.Message}";
+            StateHasChanged();
         }
-        articleModel.ImageUrl = $"/uploads/{fileName}";
     }
 
     private void GoBack()
