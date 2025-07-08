@@ -11,7 +11,7 @@ public class OpenRouterAnalysisService : IAnalysisService, IOpenRouterService
     private readonly HttpClient _httpClient;
     private readonly string _apiKey;
     private const string OpenRouterUrl = "https://openrouter.ai/api/v1/chat/completions";
-    private const string ModelName = "google/gemini-2.0-flash-exp:free";
+    private const string ModelName = "mistralai/mistral-small-3.2-24b-instruct:free";
 
     public OpenRouterAnalysisService()
     {

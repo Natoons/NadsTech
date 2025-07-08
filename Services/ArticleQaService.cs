@@ -39,9 +39,27 @@ namespace NadsTech.Services
                     return "Vous avez atteint la limite de questions IA pour aujourd'hui. Réessayez demain.";
             }
 
-            // 3. Appeler OpenRouter
-            var answer = await _openRouter.AskArticleAsync(question);
-            // 4. Stocker la réponse
+            // 3. Récupérer l'article
+            var article = await _db.Articles.FindAsync(articleId);
+            if (article == null)
+                return "Article introuvable.";
+
+            string prompt = question;
+            // Construction du prompt enrichi pour toute question
+            prompt = $@"Voici les informations d'un article :
+
+Titre : {article.Title}
+Catégorie : {article.Category}
+Tags : {(article.Tags != null && article.Tags.Count > 0 ? string.Join(", ", article.Tags) : "aucun")}
+Résumé : {article.Summary ?? "aucun"}
+Contenu : {article.Content}
+
+Question de l'utilisateur : {question}
+";
+
+            // 4. Appeler OpenRouter
+            var answer = await _openRouter.AskArticleAsync(prompt);
+            // 5. Stocker la réponse
             var qa = new ArticleQa
             {
                 ArticleId = articleId,
